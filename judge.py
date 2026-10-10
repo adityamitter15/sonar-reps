@@ -164,8 +164,10 @@ def movements(x: np.ndarray, fs: int, tones_hz) -> List[Tuple[Rep, dict]]:
 
 def labelled(take: dict, moves: List[Tuple[Rep, dict]]) -> Tuple[List[str], str]:
     """The true label of each movement in a take, and a note if the take does not add up."""
-    n = int(take["true_reps"])
     seq = take.get("sequence")
+    # "moves" is how many push-up movements were done when that differs from
+    # the reps that should count (a set of half reps: 10 moves, 0 true reps).
+    n = len(seq) if seq else int(take.get("moves", take["true_reps"]))
     kinds = [{"F": "full", "H": "half"}[ch] for ch in seq.upper()] if seq else [take["label"]] * n
     if take.get("label") == "none":
         return ["none"] * len(moves), ""

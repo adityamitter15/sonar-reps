@@ -62,7 +62,7 @@ React to a finished movement with `.onChange(of: session.reps.count)` and look a
 Three things will change under you later today, so build for them now:
 
 - `reason` is "too shallow" today. A trained rep judge is coming and will send other reasons, such as "half rep" or "not a push-up". Show the text you are given; do not hard-code it.
-- `repLineCm` is 15 in demo and 8 on the phone today. Draw the line from the value. If it is 0, hide the line and its label.
+- `repLineCm` is 15 in demo and 12 on the phone. Draw the line from the value. If it is 0, hide the line and its label.
 - Full push-ups read anywhere from 9 to 25 cm at present. Keep the gauge scale at 0 to 40 cm as on the web page.
 
 ## Rules that come from the sonar

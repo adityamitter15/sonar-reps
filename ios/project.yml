@@ -25,6 +25,7 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Sonar Reps
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_NSMicrophoneUsageDescription: Sonar listens for echoes of the tone it plays.
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: Streams sonar samples to your Mac.
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

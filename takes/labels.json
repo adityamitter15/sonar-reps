@@ -19,22 +19,22 @@
     "file": "phone_pushups_1.flac",
     "kind": "push-ups over iPhone",
     "true_reps": 13,
-    "min_depth_cm": 8.0,
+    "min_depth_cm": 12.0,
     "tones_hz": [
       18500.0,
       19100.0,
       19700.0
     ],
     "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3. Rep count read from the trace (13 clean cycles), to be confirmed by Addy. Depth reads low on the phone, so the line is 8 cm.",
-    "expect_valid": 13,
-    "expect_shallow": 0
+    "expect_valid": 9,
+    "expect_shallow": 4
   },
   {
     "name": "phone_pushups_3",
     "file": "phone_pushups_3.flac",
     "kind": "push-ups over iPhone",
     "true_reps": 10,
-    "min_depth_cm": 8.0,
+    "min_depth_cm": 12.0,
     "tones_hz": [
       18500.0,
       19100.0,
@@ -50,14 +50,158 @@
     "file": "phone_live_4.flac",
     "kind": "push-ups over iPhone, streamed live",
     "true_reps": 10,
-    "min_depth_cm": 8.0,
+    "min_depth_cm": 12.0,
     "tones_hz": [
       18500.0,
       19100.0,
       19700.0
     ],
     "note": "iPhone 16 Pro Max face-up on the floor, tone level 0.3, carriers at 0.002. First set streamed live to the Mac over the iPhone hotspot. 10 cycles in the trace; the true count is not yet confirmed by Addy. Depths fade over the last three reps.",
+    "expect_valid": 9,
+    "expect_shallow": 1
+  },
+  {
+    "name": "set_full",
+    "file": "set_full.flac",
+    "kind": "10 full push-ups, normal pace",
+    "true_reps": 10,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. ",
+    "label": "full",
     "expect_valid": 10,
+    "expect_shallow": 0
+  },
+  {
+    "name": "set_full_fast",
+    "file": "set_full_fast.flac",
+    "kind": "10 full push-ups, fast",
+    "true_reps": 10,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. About 0.9 s per rep.",
+    "label": "full",
+    "expect_valid": 10,
+    "expect_shallow": 0
+  },
+  {
+    "name": "set_half",
+    "file": "set_half.flac",
+    "kind": "10 half reps",
+    "true_reps": 0,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. Half reps must not count.",
+    "label": "half",
+    "moves": 10,
+    "expect_valid": 0,
+    "expect_shallow": 10
+  },
+  {
+    "name": "set_kneeling",
+    "file": "set_kneeling.flac",
+    "kind": "10 kneeling push-ups",
+    "true_reps": 0,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. The sonar sees the chest, not the knees, so these read as push-ups. Not used to train the judge.",
+    "expect_valid": 9,
+    "expect_shallow": 1
+  },
+  {
+    "name": "set_empty_floor",
+    "file": "set_empty_floor.flac",
+    "kind": "empty floor, people walking nearby",
+    "true_reps": 0,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. Nobody over the phone for about 30 s.",
+    "label": "none",
+    "expect_valid": 1,
+    "expect_shallow": 0
+  },
+  {
+    "name": "set_hand_wave",
+    "file": "set_hand_wave.flac",
+    "kind": "hand waved over the phone 10 times",
+    "true_reps": 0,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. ",
+    "label": "none",
+    "expect_valid": 10,
+    "expect_shallow": 0
+  },
+  {
+    "name": "set_phone_handled",
+    "file": "set_phone_handled.flac",
+    "kind": "phone picked up, slid and shaken",
+    "true_reps": 0,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. The file does not hold the motion sensor flag. Live, with the flag, nothing was counted.",
+    "label": "none",
+    "expect_valid": 0,
+    "expect_shallow": 5
+  },
+  {
+    "name": "set_mixed",
+    "file": "set_mixed.flac",
+    "kind": "5 full and 5 half, alternating, full first",
+    "true_reps": 5,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. ",
+    "sequence": "FHFHFHFHFH",
+    "expect_valid": 3,
+    "expect_shallow": 7
+  },
+  {
+    "name": "set_deep",
+    "file": "set_deep.flac",
+    "kind": "5 deep push-ups, chest to the floor",
+    "true_reps": 5,
+    "min_depth_cm": 12.0,
+    "tones_hz": [
+      18500.0,
+      19100.0,
+      19700.0
+    ],
+    "note": "iPhone 16 Pro Max face-up on the floor, volume about 75 percent, tone level 0.3, tones at the microphone 0.0021 to 0.0022. Labelled by Addy. Chest height with arms locked about one A4 sheet (29.7 cm) by Addy's estimate. Each rep pauses at the bottom.",
+    "label": "full",
+    "expect_valid": 5,
     "expect_shallow": 0
   }
 ]

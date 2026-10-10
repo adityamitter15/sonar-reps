@@ -147,3 +147,47 @@ Levels are the tone amplitude in the recording, full scale 1.0. The app's audio 
 Not stored as a take: the 10 reps are not recoverable from it.
 
 Fix made straight away: the tracker now reports the weakest tone level (`SonarTracker.level`), and `phone_receiver.py` refuses to count and shows "TONE TOO QUIET, TURN THE PHONE VOLUME UP" on the demo screen while it is under 0.0008. Checked by replay: this take is blocked from its first second (level 0.0001 to 0.0002), and the 11:22 take still counts 10 of 10 with no warning. The warning needs the stream to reach the Mac; a set recorded on the phone alone is not checked.
+
+## 13:19 to 13:27. The nine labelled sets
+
+Recorded by Addy one after another, volume back at about 75 percent, phone streaming to the Mac. Tone level at the microphone 0.0021 to 0.0022 in all nine, so the sets can be compared. Labels are his, given in order. Stored in `takes/` as `set_*.flac`.
+
+Read live with the 8 cm line that was running at the time:
+
+| Set | Done | Counted | Refused | Depths read |
+|---|---|---|---|---|
+| Full, normal pace | 10 | 10 | 0 | 17.5 to 22.1 cm |
+| Full, fast | 10 | 10 | 0 | 13.6 to 19.3 cm, about 0.9 s a rep |
+| Half reps | 10 | 4 | 6 | 4.7 to 11.1 cm |
+| Kneeling | 10 | 10 | 0 | 8.7 to 19.5 cm |
+| Empty floor, people walking | 0 | 1 | 0 | one movement of 19.5 cm at 2 to 5 s, most likely Addy getting up after pressing Start; nothing in the 27 s after |
+| Hand waved 10 times | 0 | 10 | 0 | 12.8 to 21.1 cm |
+| Phone picked up, slid, shaken | 0 | 0 | 0 | the motion sensor blocked everything. From the sound alone, with no motion flag: 1 counted, 4 refused |
+| 5 full and 5 half, alternating | 5 | 7 | 3 | full 8.6 to 18.1 cm, half 4.7 to 11.0 cm |
+| Deep, chest touching down | 5 | 3 | 0 | 17.3 to 24.5 cm |
+
+What went wrong at 8 cm, and what was changed:
+
+- **Half reps counted** (4 of 10, and 5 of 5 in the mixed set). Half reps read 4.7 to 11.2 cm and full reps 13.6 cm and up, apart from two. The line is now 12 cm. Any line from 11.5 to 13.5 cm sorts the same 53 of 55 full and half reps.
+- **Two deep reps never counted.** Each deep rep pauses at the bottom, and after the pause the way up reads only 8 to 10 cm against 21 to 24 cm on the way down, so the rep never came back far enough to close. `return_frac` is now 0.7 (a rep closes once it has come back 30 percent of its depth). All 5 count, and no other stored take changes.
+- **Two full reps in the mixed set read 8.6 and 7.7 cm** on the way down and 17 and 14.5 cm on the way back up. Still refused. The way up is not used for depth yet.
+
+With the 12 cm line and the new closing rule (replay of the stored takes): full 10 of 10, fast 10 of 10, deep 5 of 5, mixed 3 of 5 full with all 5 half refused, half 0 of 10 counted, phone handled 0 counted, empty floor 1 counted, hand 10 of 10 counted, kneeling 9 of 10 counted. The two older unconfirmed sets lose reps at 12 cm: 9 of 13 and 9 of 10.
+
+**Not blocked: a hand, and kneeling.** A hand moved up and down over the phone reads 12.7 to 21.1 cm at a push-up's pace with a steady echo of 10.5 to 14.8 dB, inside the range of real push-ups on every feature. Kneeling push-ups move the chest the same distance, and the sonar does not see knees.
+
+**Depth check.** Addy puts his chest about one A4 sheet (29.7 cm) above the floor with arms locked. The deep reps read 17.3, 21.2, 22.1, 22.2 and 24.2 cm. In the right range, probably short. His figure is an estimate, so this is not a calibration.
+
+## 13:36. The rep judge, trained and tested: it loses to the line
+
+`python judge.py`, 72 movements from 9 labelled takes (40 full, 15 half, 17 not a push-up). Every figure is for a take the model was not trained on.
+
+| | Right |
+|---|---|
+| One depth line, fitted on the other takes (11.5 cm every time) | 53 of 55 full and half reps |
+| Model, full against half | 51 of 55 |
+| Model, full, half or not a push-up | 21 of 72 |
+
+The three-way model calls 30 of 40 full reps "not a push-up" and 11 of 17 other movements "full": hand waves and push-ups cannot be told apart from these 7 features, so training on hand waves damages the full class. The two-way model makes the same two mistakes as the line in the mixed set and two more in the fast set.
+
+Decision, as written in `PITCH.md` before the test: the model does not beat the fixed line, so the fixed line ships. No `judge.json` is committed.

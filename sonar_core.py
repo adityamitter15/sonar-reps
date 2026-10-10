@@ -159,7 +159,10 @@ class Rep:
 class RepCounterConfig:
     min_depth_cm: float = 15.0  # a rep must travel at least this far
     start_down_cm: float = 3.0  # movement that opens a rep
-    return_frac: float = 0.6  # a rep closes once it is back within this share of its depth from the top
+    # A rep closes once it is back within this share of its depth from the
+    # top. 0.7 since the deep set of 13:26: after a pause at the bottom the
+    # way up reads short, and at 0.6 two of five deep reps never closed.
+    return_frac: float = 0.7
     smooth_hz: float = 4.0
     rest_reset_s: float = 0.8  # re-anchor the top after this long still
 

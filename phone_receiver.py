@@ -1,6 +1,6 @@
 """Receive the iPhone's sonar stream on the Mac and count reps live.
 
-  python phone_receiver.py [--port 5005] [--min-depth 15] [--record take.wav] [--display] [--judge]
+  python phone_receiver.py [--port 5005] [--min-depth 12] [--record take.wav] [--display] [--judge]
 
 --display also serves the live demo screen on http://localhost:8765.
 --judge lets the trained rep judge (judge.json, from judge.py) decide what
@@ -10,7 +10,7 @@ The verdict goes back to the phone as well, so the app can show it: about 30
 times a second one JSON datagram is sent to the address the audio comes from.
 
     {"v": 1, "set": 3, "depth": 12.3, "count": 7, "shallow": 1,
-     "moving": false, "quiet": false, "lost": 0, "min_depth": 8.0,
+     "moving": false, "quiet": false, "lost": 0, "min_depth": 12.0,
      "rep": {"n": 8, "valid": true, "depth": 21.4, "reason": ""}}
 
 "rep" is the last finished movement of this set (null before the first) and
@@ -47,7 +47,8 @@ QUIET_LEVEL = 0.0008
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=5005)
-    ap.add_argument("--min-depth", type=float, default=15.0)
+    # 12 cm: fitted on the labelled full and half sets (README, Evaluation).
+    ap.add_argument("--min-depth", type=float, default=12.0)
     ap.add_argument("--tones", default="18500,19100,19700")
     ap.add_argument("--record", default="")
     ap.add_argument("--display", type=int, nargs="?", const=8765, default=0, metavar="PORT",

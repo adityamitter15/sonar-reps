@@ -81,6 +81,8 @@ def add(a):
         label["label"] = a.label
     if a.sequence:
         label["sequence"] = a.sequence
+    if a.moves:
+        label["moves"] = a.moves
     rc = run_take(label)
     label["expect_valid"] = int(rc.count)
     label["expect_shallow"] = int(sum(not r.valid for r in rc.reps))
@@ -105,6 +107,8 @@ if __name__ == "__main__":
     p.add_argument("--label", choices=["full", "half", "none"], default="",
                    help="what every push-up in the take was, for the rep judge")
     p.add_argument("--sequence", default="", help="mixed set, in order: F full, H half, for example FHFHF")
+    p.add_argument("--moves", type=int, default=0,
+                   help="push-up movements done, when not all should count (10 half reps: --true 0 --moves 10)")
     a = ap.parse_args()
     if a.cmd == "add":
         add(a)
