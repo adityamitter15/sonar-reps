@@ -45,9 +45,9 @@ struct SonarView: View {
                             .accessibilityLabel("Movement trace")
                             .accessibilityValue(String(format: "%.0f centimetres down", max(0, session.depthCm)))
                     }
-                    .grayscale(session.phoneMoving ? 1 : 0)
-                    .opacity(session.phoneMoving ? 0.4 : 1)
-                    .animation(.easeOut(duration: 0.18), value: session.phoneMoving)
+                    .grayscale(notCounting ? 1 : 0)
+                    .opacity(notCounting ? 0.4 : 1)
+                    .animation(.easeOut(duration: 0.18), value: notCounting)
                 } else if let result {
                     ResultPanel(record: result, isNewBest: resultIsBest, best: log.best,
                                 reps: session.reps, repLineCm: session.repLineCm)
@@ -64,6 +64,10 @@ struct SonarView: View {
                 PhoneMovedBanner()
                     .padding(.top, 4)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+            } else if session.toneTooQuiet {
+                PhoneMovedBanner(text: "Too quiet. Turn the volume up.")
+                    .padding(.top, 4)
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
 
             if let detail = noRepDetail {
@@ -71,11 +75,17 @@ struct SonarView: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: 0.18), value: session.phoneMoving)
+        .animation(.easeOut(duration: 0.18), value: notCounting)
         .sonarAppearance()
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
             if !seenIntro { showIntro = true }
+            #if targetEnvironment(simulator)
+            // For screenshots: `simctl launch ... -autostart` begins the demo set with no tap.
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("-autostart") { startSet() }
+            if args.contains("-autostop") { DispatchQueue.main.asyncAfter(deadline: .now() + 17.3) { stopSet() } }
+            #endif
         }
         .sheet(isPresented: $showIntro, onDismiss: { seenIntro = true }) { HowItWorks() }
         .sheet(isPresented: $showSettings) {
@@ -114,6 +124,9 @@ struct SonarView: View {
         }
         .frame(height: 36)
     }
+
+    /// The phone is moving or its tones are too quiet: nothing counts, and the screen says why.
+    private var notCounting: Bool { session.phoneMoving || session.toneTooQuiet }
 
     private var pillState: StatusPill.State {
         session.live ? .live : .waiting

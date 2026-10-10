@@ -40,6 +40,7 @@ final class SonarSession: ObservableObject {
     @Published private(set) var count = 0  // counted reps this set
     @Published private(set) var noReps = 0  // movements refused this set
     @Published private(set) var phoneMoving = false  // the phone itself is moving, so nothing counts
+    @Published private(set) var toneTooQuiet = false  // the tones reach the microphone too weakly to count: volume up
     @Published private(set) var repLineCm = 15.0  // depth a movement must reach to count
     @Published private(set) var lostPackets = 0
     @Published private(set) var reps: [RepEvent] = []  // every finished movement this set, oldest first
@@ -49,6 +50,8 @@ final class SonarSession: ObservableObject {
 
     private let engine = SonarEngine()
     private var setNumber = -1
+    private var leavingSet: Int?  // the Mac's set we asked it to drop with reset(), until it has
+    private var resetAsked = Date.distantPast
     private var lastMessage = Date.distantPast
     private var ticker: Timer?
     private var demoStart = Date()
@@ -68,6 +71,7 @@ final class SonarSession: ObservableObject {
         guard !running else { return }
         error = nil
         clear()
+        leavingSet = nil
         switch source {
         case .demo:
             demoStart = Date()
@@ -104,6 +108,7 @@ final class SonarSession: ObservableObject {
         live = false
         depthCm = 0
         phoneMoving = false
+        toneTooQuiet = false
         status = "Stopped"
     }
 
@@ -115,6 +120,10 @@ final class SonarSession: ObservableObject {
             demoStart = Date()
             demoDone = []
         case .live:
+            // Until the Mac has started its new set, its messages still carry
+            // the old count and last rep. take() ignores those.
+            leavingSet = setNumber
+            resetAsked = Date()
             engine.sendReset()
         }
     }
@@ -149,6 +158,7 @@ final class SonarSession: ObservableObject {
         let moving: Bool
         let lost: Int
         let min_depth: Double
+        let quiet: Bool?  // absent from older receivers
         let rep: Rep?
     }
 
@@ -156,6 +166,19 @@ final class SonarSession: ObservableObject {
         guard running, let m = try? JSONDecoder().decode(Message.self, from: data) else { return }
         lastMessage = Date()
         live = true
+        if toneTooQuiet != (m.quiet ?? false) { toneTooQuiet = m.quiet ?? false }
+        if let old = leavingSet {
+            if m.set == old {
+                // The reset has not reached the Mac yet. Ask again in case it was lost.
+                if Date().timeIntervalSince(resetAsked) > 0.3 {
+                    resetAsked = Date()
+                    engine.sendReset()
+                }
+                phoneMoving = m.moving
+                return
+            }
+            leavingSet = nil
+        }
         if m.set != setNumber {
             // The Mac started a new set: forget the old reps.
             setNumber = m.set

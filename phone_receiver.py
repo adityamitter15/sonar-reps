@@ -1,10 +1,10 @@
 """Receive the iPhone's sonar stream on the Mac and count reps live.
 
-  python phone_receiver.py [--port 5005] [--min-depth 12] [--record take.wav] [--display] [--judge]
+  python phone_receiver.py [--port 5005] [--record take.wav] [--display] [--no-judge --min-depth 12]
 
 --display also serves the live demo screen on http://localhost:8765.
---judge lets the trained rep judge (judge.json, from judge.py) decide what
-counts, in place of the fixed depth line.
+The trained rep judge (judge.json, from judge.py) decides what counts.
+--no-judge counts with the fixed depth line instead.
 
 The verdict goes back to the phone as well, so the app can show it: about 30
 times a second one JSON datagram is sent to the address the audio comes from.
@@ -53,7 +53,8 @@ def main():
     ap.add_argument("--record", default="")
     ap.add_argument("--display", type=int, nargs="?", const=8765, default=0, metavar="PORT",
                     help="serve the live demo screen (default port 8765)")
-    ap.add_argument("--judge", action="store_true", help="count what the trained rep judge calls a full rep")
+    ap.add_argument("--judge", action=argparse.BooleanOptionalAction, default=True,
+                    help="count what the trained rep judge calls a full rep (default); --no-judge uses --min-depth")
     a = ap.parse_args()
 
     cfg = SonarConfig(tones_hz=tuple(float(f) for f in a.tones.split(",")))
@@ -61,8 +62,10 @@ def main():
     rep_cfg = RepCounterConfig(min_depth_cm=a.min_depth)
     judge = Judge.load() if a.judge else None
     if a.judge and judge is None:
-        sys.exit("No judge.json yet. Run: python judge.py")
-    line_cm = 0.0 if judge else a.min_depth  # no fixed line when the judge decides
+        print("No judge.json (run: python judge.py). Counting with the fixed line.")
+    # The line drawn on the screens: the judge's own for a typical echo, or the fixed one.
+    line_cm = judge.line_cm() if judge else a.min_depth
+    print(f"Verdicts by {'the trained rep judge' if judge else 'the fixed depth line'}, line {line_cm} cm")
 
     def fresh():
         """A count starting from zero, with the movement finder around it when the judge is on."""
@@ -143,6 +146,8 @@ def main():
                 blocked += phone_moving
                 counter.state = "up"
                 counter.y = None
+                if finder:
+                    finder.pending = None
             else:
                 if finder:
                     done = []

@@ -1,28 +1,35 @@
-"""Rep judge: a small trained model that says what each movement was.
+"""Rep judge: a small trained model that says whether a push-up was a full rep.
 
   python judge.py                  Train on the labelled takes, test each take on a
                                    model that never saw it, and write judge.json.
   python judge.py show take.wav    List the movements in a recording with their
                                    numbers and, if judge.json exists, the verdicts.
 
-The sonar gives a trace of chest movement. A fixed depth line cannot judge it:
-full push-ups read anywhere from 9 to 25 cm from one set to the next. So every
-down and up is found with a low bar, described by a few numbers, and judged by
-a model trained on our own recordings:
+The sonar gives a trace of chest movement. Every down and up is found with a
+low bar, measured on the way down and on the way back up, and judged by a
+model trained on our own labelled recordings:
 
     full   a full rep, the only verdict that counts
     half   a push-up that did not go deep enough
-    none   not a push-up: a hand, someone walking past, the phone being handled
 
-The model is softmax regression on standardised features, fitted with plain
+Why both strokes: the way down sometimes reads short (a full rep read 8.6 cm
+down and 17 cm back up) and after a pause at the bottom the way up does. One
+of the two is usually right, and the model learns how to weigh them with the
+strength and steadiness of the echo. Pace is left out on purpose: a fast full
+rep is still a full rep.
+
+What it cannot do: a hand moved over the phone like a chest gives the same
+numbers as a push-up, so takes labelled "none" are tested but not trained on.
+
+The model is logistic regression on standardised features, fitted with plain
 numpy, so the whole judge is a few dozen numbers in judge.json and ports to
 the phone as they are.
 
 Labels come from takes/labels.json. A take is used when it has either
     "label": "full" | "half" | "none"     every push-up in it is of that kind
     "sequence": "FHFHF..."                 its push-ups in order, F full, H half
-The true_reps deepest movements of a take are its push-ups; anything else in
-it (getting into position, standing up) is labelled none.
+The deepest movements of a take are its push-ups; anything else in it
+(getting into position, standing up) is labelled none.
 """
 
 from __future__ import annotations
@@ -38,11 +45,18 @@ import numpy as np
 from sonar_core import Rep, RepCounter, RepCounterConfig, SonarConfig, SonarTracker
 
 MODEL = Path(__file__).parent / "judge.json"
-CLASSES = ("full", "half", "none")
-REASONS = {"full": "", "half": "half rep", "none": "not a push-up"}
-FEATURES = ("depth_cm", "down_s", "rise_s", "peak_down_cm_s", "peak_up_cm_s", "echo_db", "steadiness")
+CLASSES = ("full", "half")  # what the model says
+LABELS = ("full", "half", "none")  # what a take can hold
+REASONS = {"full": "", "half": "half rep"}
+# What the model judges on: the larger of the two strokes, and how steadily
+# the echo's phase turned (how far to trust the reading). Chosen by scoring
+# feature sets on held-out takes, see train(); adding the two strokes
+# separately or the echo strength scored lower.
+FEATURES = ("stroke_cm", "steadiness")
 FLOOR_CM = 4.0  # anything that travels less than this is not even looked at
 HISTORY_S = 12.0
+UP_STILL_S = 0.25  # the way up is over once the top has not moved for this long
+UP_MAX_S = 1.5  # and is given up on after this long
 
 
 class MovementFinder:
@@ -60,13 +74,47 @@ class MovementFinder:
         self.power = deque(maxlen=n)
         self.steady = deque(maxlen=n)
         self.t = 0.0  # time of the newest sample
+        # The movement whose way back up is still being measured:
+        # [rep, bottom cm, highest point reached since cm, when that last changed].
+        self.pending: Optional[list] = None
 
     def process(self, pos_m: np.ndarray, power: np.ndarray, steadiness: np.ndarray) -> List[Tuple[Rep, dict]]:
+        """Movements that have just finished, each with its numbers. A movement
+        is handed over once the chest is back at the top, not when the counter
+        closes it part of the way up, and is in counter.reps only from then."""
         self.pos.extend(pos_m * 100.0)
         self.power.extend(power)
         self.steady.extend(steadiness)
         self.t += len(pos_m) / self.rate
-        return [(r, self.describe(r)) for r in self.counter.process(pos_m)]
+        c = self.counter
+        out = []
+        for r in c.process(pos_m):
+            if self.pending:
+                out.append(self.finish())
+            c.reps.remove(r)
+            self.pending = [r, c.bottom, c.top, self.t]
+        if self.pending:
+            r, _, top, moved = self.pending
+            if c.state == "up" and c.top < top - 0.05:
+                self.pending[2], self.pending[3] = c.top, self.t
+            elif c.state == "down" or self.t - moved > UP_STILL_S or self.t - r.t_end > UP_MAX_S:
+                out.append(self.finish())
+        return out
+
+    def finish(self) -> Tuple[Rep, dict]:
+        """Close the pending movement with what its way up measured."""
+        r, bottom, top, _ = self.pending
+        self.pending = None
+        feat = self.describe(r)
+        feat["up_cm"] = float(max(0.0, bottom - min(top, self.counter.top)))
+        feat["stroke_cm"] = max(feat["depth_cm"], feat["up_cm"])
+        r.depth_cm = round(feat["stroke_cm"], 1)  # shown as the rep's depth
+        self.counter.reps.append(r)
+        return r, feat
+
+    def flush(self) -> List[Tuple[Rep, dict]]:
+        """End of a recording: hand over a movement still waiting for its way up."""
+        return [self.finish()] if self.pending else []
 
     def describe(self, r: Rep) -> dict:
         pos = np.asarray(self.pos)
@@ -86,10 +134,10 @@ class MovementFinder:
         v = np.gradient(smooth) * self.rate
         heard = power[power > 0]  # a file can open with digital silence
         rest = np.percentile(heard if len(heard) else power, 5) + 1e-30  # the quietest moments kept
+        # Pace (down_s, peak speeds) is measured for the record but not judged on.
         return {
             "depth_cm": float(r.depth_cm),
             "down_s": float(r.t_bottom - r.t_start),
-            "rise_s": float(r.t_end - r.t_bottom),
             "peak_down_cm_s": float(v[a:b].max()),
             "peak_up_cm_s": float(-v[b:c].min()),
             "echo_db": float(10.0 * np.log10(power[a:c].mean() / rest)),
@@ -136,6 +184,16 @@ class Judge:
         s = ((self.matrix([feat]) - self.mean) / self.std) @ self.w + self.b
         return self.classes[int(np.argmax(s))]
 
+    def line_cm(self) -> float:
+        """The stroke at which the verdict turns to full, for an echo of
+        average steadiness. Drawn on the screens as the target line."""
+        typical = dict(zip(FEATURES, self.mean))
+        lo, hi = FLOOR_CM, 40.0
+        for _ in range(30):
+            mid = (lo + hi) / 2
+            lo, hi = (lo, mid) if self.verdict({**typical, "stroke_cm": mid}) == "full" else (mid, hi)
+        return round(hi, 1)
+
     def save(self, path: Path = MODEL, **extra):
         path.write_text(json.dumps({
             "features": list(FEATURES), "classes": self.classes, "mean": self.mean.tolist(),
@@ -159,7 +217,7 @@ def movements(x: np.ndarray, fs: int, tones_hz) -> List[Tuple[Rep, dict]]:
     for i in range(0, len(x), 1024):
         pos = tr.process(x[i:i + 1024])
         out += finder.process(pos, tr.power, tr.steadiness)
-    return out
+    return out + finder.flush()
 
 
 def labelled(take: dict, moves: List[Tuple[Rep, dict]]) -> Tuple[List[str], str]:
@@ -171,7 +229,7 @@ def labelled(take: dict, moves: List[Tuple[Rep, dict]]) -> Tuple[List[str], str]
     kinds = [{"F": "full", "H": "half"}[ch] for ch in seq.upper()] if seq else [take["label"]] * n
     if take.get("label") == "none":
         return ["none"] * len(moves), ""
-    order = np.argsort([-f["depth_cm"] for _, f in moves])[:n]
+    order = np.argsort([-f["stroke_cm"] for _, f in moves])[:n]
     labels = ["none"] * len(moves)
     for kind, i in zip(kinds, sorted(order)):  # push-ups in the order they were done
         labels[i] = kind
@@ -193,58 +251,80 @@ def load_takes():
     return out
 
 
-def best_line(feats, labels) -> float:
-    """The fixed depth line that best separates full reps from everything else."""
-    depth = np.array([f["depth_cm"] for f in feats])
+def best_line(feats, labels, key: str = "depth_cm") -> float:
+    """The fixed line on one measurement that best separates full reps from half reps."""
+    depth = np.array([f[key] for f in feats])
     full = np.array([l == "full" for l in labels])
     lines = np.arange(FLOOR_CM, 40.0, 0.5)
     return float(lines[int(np.argmax([np.mean((depth >= ln) == full) for ln in lines]))])
 
 
 def train():
+    global FEATURES
     data = load_takes()
     if not data:
         raise SystemExit("no take in takes/labels.json has a label yet")
     print("Movements per take:")
     for take, feats, labels, note in data:
-        counts = {c: labels.count(c) for c in CLASSES if c in labels}
+        counts = {c: labels.count(c) for c in LABELS if c in labels}
         print(f"  {take['name']:22s} {counts}" + (f"   NOTE: {note}" if note else ""))
-    every_f = [f for _, feats, _, _ in data for f in feats]
-    every_l = [l for _, _, labels, _ in data for l in labels]
-    if len(set(every_l)) < 2:
-        raise SystemExit("only one kind of movement is labelled so far; nothing to learn yet")
 
-    # Each take is judged by a model, and a fixed line, that never saw it.
+    def pushups(d):
+        """The full and half reps of a take: what the model is trained and scored on."""
+        return [f for f, l in zip(d[1], d[2]) if l != "none"], [l for l in d[2] if l != "none"]
+
+    every_f = [f for d in data for f in pushups(d)[0]]
+    every_l = [l for d in data for l in pushups(d)[1]]
+    if len(set(every_l)) < 2:
+        raise SystemExit("full and half reps are not both labelled yet; nothing to learn")
+
+    # Each take is judged by a model, and by a fixed line, that never saw it.
     print("\nEach take judged without having been trained on:")
-    print("| Take | Kind | True full reps | Model counted | Fixed line counted | Model verdicts right |")
-    print("|---|---|---|---|---|---|")
-    hit = total = 0
-    confusion = {a: {b: 0 for b in CLASSES} for a in CLASSES}
+    print("| Take | Kind | Full | Half | Model right | Depth line right | Model counted |")
+    print("|---|---|---|---|---|---|---|")
+    m_hit = l_hit = total = 0
     for k, (take, feats, labels, _) in enumerate(data):
-        tf = [f for j, d in enumerate(data) if j != k for f in d[1]]
-        tl = [l for j, d in enumerate(data) if j != k for l in d[2]]
-        if len(set(tl)) < 2 or not feats:
-            continue
+        tf = [f for j, d in enumerate(data) if j != k for f in pushups(d)[0]]
+        tl = [l for j, d in enumerate(data) if j != k for l in pushups(d)[1]]
         judge, line = Judge.fit(tf, tl), best_line(tf, tl)
         said = [judge.verdict(f) for f in feats]
-        for a, b in zip(labels, said):
-            confusion[a][b if b in CLASSES else "none"] += 1
-        right = sum(a == b for a, b in zip(labels, said))
-        hit += right
-        total += len(labels)
-        print(f"| {take['name']} | {take['kind']} | {labels.count('full')} | {said.count('full')} | "
-              f"{sum(f['depth_cm'] >= line for f in feats)} (line {line:.1f} cm) | {right} of {len(labels)} |")
-    if total:
-        print(f"\nModel verdicts right on unseen takes: {hit} of {total}")
-        print("\n| True \\\\ Model said | " + " | ".join(CLASSES) + " |\n|---|" + "---|" * len(CLASSES))
-        for a in CLASSES:
-            if sum(confusion[a].values()):
-                print(f"| {a} | " + " | ".join(str(confusion[a][b]) for b in CLASSES) + " |")
+        pf, pl = pushups((take, feats, labels))
+        if pl:
+            m = sum(judge.verdict(f) == l for f, l in zip(pf, pl))
+            ln = sum(("full" if f["depth_cm"] >= line else "half") == l for f, l in zip(pf, pl))
+            m_hit, l_hit, total = m_hit + m, l_hit + ln, total + len(pl)
+            print(f"| {take['name']} | {take['kind']} | {pl.count('full')} | {pl.count('half')} | "
+                  f"{m} of {len(pl)} | {ln} of {len(pl)} (line {line:.1f} cm) | {said.count('full')} |")
+        else:
+            print(f"| {take['name']} | {take['kind']} | 0 | 0 | not a push-up set | "
+                  f"counts {sum(f['depth_cm'] >= line for f in feats)} | {said.count('full')} |")
+    print(f"\nFull and half reps judged right on unseen takes: model {m_hit} of {total}, depth line {l_hit} of {total}")
 
     judge = Judge.fit(every_f, every_l)
-    judge.save(trained_on={c: every_l.count(c) for c in CLASSES}, takes=[d[0]["name"] for d in data])
-    print(f"\nWrote {MODEL.name}, trained on {len(every_l)} movements from {len(data)} takes: "
+    judge.save(trained_on={c: every_l.count(c) for c in CLASSES}, takes=[d[0]["name"] for d in data if pushups(d)[1]],
+               unseen_right=f"{m_hit} of {total}", depth_line_right=f"{l_hit} of {total}")
+    print(f"\nWrote {MODEL.name}, trained on {len(every_l)} movements: "
           + ", ".join(f"{every_l.count(c)} {c}" for c in CLASSES))
+    z = "  ".join(f"{name} {w:+.2f}" for name, w in zip(FEATURES, judge.w[:, 0] - judge.w[:, 1]))
+    print("What pushes a movement towards full (per standard deviation): " + z)
+    print(f"Its line for an echo of average steadiness: {judge.line_cm()} cm of stroke")
+
+    # How the choice of features was made: the same held-out test for each set.
+    print("\nOther feature sets, same test:")
+    kept = FEATURES
+    for other in (("depth_cm",), ("stroke_cm",), ("depth_cm", "up_cm", "stroke_cm"),
+                  ("depth_cm", "up_cm", "stroke_cm", "echo_db", "steadiness")):
+        FEATURES = other
+        hit = 0
+        for k in range(len(data)):
+            pf, pl = pushups(data[k])
+            if not pl:
+                continue
+            j = Judge.fit([f for i, d in enumerate(data) if i != k for f in pushups(d)[0]],
+                          [l for i, d in enumerate(data) if i != k for l in pushups(d)[1]])
+            hit += sum(j.verdict(f) == l for f, l in zip(pf, pl))
+        print(f"  {' + '.join(other):55s} {hit} of {total}")
+    FEATURES = kept
 
 
 def show(wav: str, tones: str):

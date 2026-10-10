@@ -131,6 +131,16 @@ struct ResultPanel: View {
                 }
             }
 
+            if let note = Coach.note(reps: reps, duration: record.duration) {
+                Card {
+                    Caption("Coach note", size: 13)
+                    Text(note)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Theme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             HStack(spacing: 12) {
                 Tile(label: "No reps", value: "\(record.noReps)",
                      color: record.noReps > 0 ? Theme.noRep : Theme.text)
