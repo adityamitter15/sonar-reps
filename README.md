@@ -6,16 +6,16 @@ Your phone already has a sonar. Sonar Reps plays near-ultrasonic tones (18.5 to 
 
 Put your phone on the floor and train. It counts your push-ups and refuses half reps, using sound you cannot hear.
 
-| | Measured on an iPhone 16 Pro Max |
+| | Measured on an iPhone 16 Pro Max, judged by the rep judge on takes it was not trained on |
 |---|---|
-| Full push-ups counted | **38 of 40** |
+| Full push-ups counted | **39 of 40** |
 | Half reps refused | **15 of 15** |
 | Phone picked up, slid and shaken | **0 counted** |
 | Loud room (noise up to half of full scale) | count unchanged |
-| Hand waved over the phone | 10 of 10 counted, **not blocked** |
-| Kneeling push-ups | 9 of 10 counted, **not blocked** |
+| Hand waved over the phone | 8 of 10 counted, **not blocked** |
+| Kneeling push-ups | 9 of 10 counted with the depth line, **not blocked**; not yet retested with the judge |
 
-One person, one phone, one afternoon. The full table and its limits are under Evaluation.
+One person, one phone, one afternoon. The full table and its limits are under Evaluation; the judge's figures are from `python judge.py`.
 
 ## Why sonar
 
@@ -66,13 +66,13 @@ A native SwiftUI app in `ios/`, built around one rule from the sonar: once Start
 |---|---|---|---|---|
 | ![Home](docs/app/home-light.png) | ![Set](docs/app/set-light.png) | ![NO REP](docs/app/no-rep.png) | ![Phone moved](docs/app/phone-moved.png) | ![Result](docs/app/result-light.png) |
 
-These are rendered from the app's SwiftUI code on a Mac, playing the built-in demo set (rep line 15 cm in the demo; the product runs 12 cm). Dark theme: `docs/app/set-dark.png`, `docs/app/result-dark.png`. Also `docs/app/how-it-works.png`, `docs/app/settings.png` and the icon, `docs/app/icon.png`.
+These are rendered from the app's SwiftUI code on a Mac, playing the built-in demo set (target 15 cm in the demo; live, the Mac sends the judge's line). Dark theme: `docs/app/set-dark.png`, `docs/app/result-dark.png`. Also `docs/app/how-it-works.png`, `docs/app/settings.png` and the icon, `docs/app/icon.png`.
 
 - **Home.** Your personal best (reps, when, deepest and average depth, time) and your recent sets. Saved on the phone only.
 - **During a set.** A huge count, a depth column with the target line, a bar for every movement, and the trace of your chest over the last 12 seconds, so you can see what the sonar sees. Stop and Restart are large.
 - **NO REP.** The whole screen turns red with the reason, for example "Too shallow. You reached 9 cm of 15 cm."
-- **Phone moved.** An amber banner, "Phone moved. Keep it still.", and nothing counts until it is still.
-- **After the set.** Reps, NO REPs, time, deepest and average depth, depth per movement, and a badge for a new personal best.
+- **Phone moved.** An amber banner, "Phone moved. Keep it still.", and nothing counts until it is still. A similar warning shows when the tones are too quiet to count.
+- **After the set.** Reps, NO REPs, time, deepest and average depth, depth per movement, a badge for a new personal best, and one line of advice worked out from the judged reps.
 - **Settings.** Light or dark theme, how it works, clear history. Developer mode (tap Version five times) holds the Mac address, the raw recording and connection details, out of a normal user's way.
 
 Rules the design follows, because breaking them breaks the counting:
@@ -125,6 +125,15 @@ So the line is what runs. The three-way model fails because a hand wave looks li
 
 **Depth.** In the deep set the chest went from arms locked (about 30 cm up by Addy's estimate) down to touching, and the sonar read 17.3 to 24.2 cm. So depth is in the right range and probably reads short. It is good enough to sort full from half reps, not to quote in centimetres.
 
+**Update: the judge now runs in the product.** It was reworked to measure the way back up as well as the way down and to judge on the larger stroke and the steadiness of the echo. Tested the same way, on takes it had not seen (`python judge.py`):
+
+| | Right |
+|---|---|
+| One depth line | 53 of 55 full and half reps |
+| Rep judge, full against half | **54 of 55** |
+
+Per set, the judge counts 10 of 10 full at normal pace, 10 of 10 fast, 5 of 5 deep, 4 of 5 full in the mixed set with all 5 half refused, and 0 of 10 half reps: 39 of 40 full push-ups and 15 of 15 half reps refused. It gets the two full reps the line refused because their way up read 17 and 14.5 cm. It is trained on full and half only: a hand wave gives the same numbers as a push-up, so hand waves are tested but not trained on, and 8 of 10 still count. Its line, for an echo of average steadiness, is 14.6 cm of stroke.
+
 **Volume matters.** With the phone volume turned down the tones were 10 times weaker and a set of 10 read as noise. The receiver now refuses to count and says so when the tones are too quiet.
 
 ## Presenting it
@@ -135,9 +144,9 @@ A slide outline for the 3 minute video or a deck. Every number below is from thi
 2. **The problem.** Camera counters need you to film yourself. Motion counters count a shake as a rep. Both make you manage a screen while you train.
 3. **The idea.** Every phone already has a sonar: a speaker and a microphone. Three tones at 18.5, 19.1 and 19.7 kHz, the echo off your chest, and its phase gives movement. At 19 kHz one turn of phase is 0.9 cm of chest movement; a push-up is about 28 turns. Picture: the pipeline under How it works.
 4. **Live demo.** Five full reps counting up, one half rep flashing NO REP, the phone picked up and "Phone moved". Pictures: `set-light.png`, `no-rep.png`, `phone-moved.png`.
-5. **Does it work.** 38 of 40 full push-ups counted, 15 of 15 half reps refused, shaking the phone blocked, a loud room made no difference. Picture: the At a glance table.
-6. **Where the AI is, said plainly.** The tracking is physics. We trained a model to judge each movement and tested it on sets it had never seen. One depth line, fitted on the same data, beat it: 53 against 51 of 55. So the line ships, and the line itself is learned from labelled data, not hand-picked. Picture: the two tables under Evaluation.
-7. **What still fools it.** A hand waved over the phone counts (10 of 10), and so do kneeling push-ups (9 of 10): the sonar sees a surface moving, not whose it is. Telling them apart needs the distance to that surface, which steady tones do not give; short chirps would.
+5. **Does it work.** 39 of 40 full push-ups counted, 15 of 15 half reps refused, shaking the phone blocked, a loud room made no difference. Picture: the At a glance table.
+6. **Where the AI is, said plainly.** The tracking is physics. The verdict on each movement is a small trained model, the rep judge, and it had to earn its place: our first model lost to a simple depth line (51 against 53 of 55). Measuring the way back up as well as the way down fixed that: on sets it had never seen it gets 54 of 55 against the line's 53. It is a few dozen numbers, runs with no cloud, and could run on the phone. Picture: the judge table under Evaluation.
+7. **What still fools it.** A hand waved over the phone still counts (8 of 10 with the judge), and so do kneeling push-ups (9 of 10 with the depth line): the sonar sees a surface moving, not whose it is. Telling them apart needs the distance to that surface, which steady tones do not give; short chirps would.
 8. **The app.** Personal best and history kept on the phone, NO REP and phone-moved verdicts readable from the floor, light and dark themes. Picture: the row of screens under The phone app.
 9. **Why it matters.** No camera, so no image of you ever exists; the test recordings kept in this repo hold only the band above 17.5 kHz, so no speech. It needs only a speaker and a microphone (tested so far on one iPhone and one MacBook). Uses: training at home, fitness tests, challenges between friends, places where cameras are not welcome.
 10. **Next.** Move the tracker onto the phone so it works alone (today a laptop on the same hotspot does the processing); chirps for distance, to tell a chest from a hand; more movements such as squats.
