@@ -2,6 +2,21 @@
 
 Your phone already has a sonar. Sonar Reps plays near-ultrasonic tones (18.5 to 19.7 kHz) from the iPhone speaker and listens for the echo off your chest. The phase of that echo follows your chest as it moves, so the phone counts push-ups and reads their depth with no camera, no wearable and no special hardware. Built at the QMUL AI Hackathon (Invisible AI), October 2026.
 
+## At a glance
+
+Put your phone on the floor and train. It counts your push-ups and refuses half reps, using sound you cannot hear.
+
+| | Measured on an iPhone 16 Pro Max |
+|---|---|
+| Full push-ups counted | **38 of 40** |
+| Half reps refused | **15 of 15** |
+| Phone picked up, slid and shaken | **0 counted** |
+| Loud room (noise up to half of full scale) | count unchanged |
+| Hand waved over the phone | 10 of 10 counted, **not blocked** |
+| Kneeling push-ups | 9 of 10 counted, **not blocked** |
+
+One person, one phone, one afternoon. The full table and its limits are under Evaluation.
+
 ## Why sonar
 
 - **No camera.** Nothing records you, it works in the dark, and there is no framing or lighting to get right.
@@ -41,7 +56,31 @@ python takes.py                          # replay the real recordings in takes/
 python judge.py                          # train a rep judge on the labelled takes and test it against the fixed line
 ```
 
-iPhone: `cd ios && xcodegen generate`, open the project, run on a phone, type the Mac's IP and press Start. The Mac sends its verdict back and the phone shows the count. If the university Wi-Fi blocks the stream, turn on the iPhone's Personal Hotspot and join it from the Mac.
+iPhone: `cd ios && xcodegen generate`, open the project and run on a phone. The Mac's IP is a developer setting: open Settings (the gear), tap Version five times, and enter it under Developer (default 172.20.10.11). Then press Start set. The Mac sends its verdict back and the phone shows the count. If the university Wi-Fi blocks the stream, turn on the iPhone's Personal Hotspot and join it from the Mac.
+
+## The phone app
+
+A native SwiftUI app in `ios/`, built around one rule from the sonar: once Start is pressed, the phone lies under your chest and must not be touched. Everything during a set reads at a glance from 30 to 60 cm away.
+
+| Home | During a set | NO REP | Phone moved | After the set |
+|---|---|---|---|---|
+| ![Home](docs/app/home-light.png) | ![Set](docs/app/set-light.png) | ![NO REP](docs/app/no-rep.png) | ![Phone moved](docs/app/phone-moved.png) | ![Result](docs/app/result-light.png) |
+
+These are rendered from the app's SwiftUI code on a Mac, playing the built-in demo set (rep line 15 cm in the demo; the product runs 12 cm). Dark theme: `docs/app/set-dark.png`, `docs/app/result-dark.png`. Also `docs/app/how-it-works.png`, `docs/app/settings.png` and the icon, `docs/app/icon.png`.
+
+- **Home.** Your personal best (reps, when, deepest and average depth, time) and your recent sets. Saved on the phone only.
+- **During a set.** A huge count, a depth column with the target line, a bar for every movement, and the trace of your chest over the last 12 seconds, so you can see what the sonar sees. Stop and Restart are large.
+- **NO REP.** The whole screen turns red with the reason, for example "Too shallow. You reached 9 cm of 15 cm."
+- **Phone moved.** An amber banner, "Phone moved. Keep it still.", and nothing counts until it is still.
+- **After the set.** Reps, NO REPs, time, deepest and average depth, depth per movement, and a badge for a new personal best.
+- **Settings.** Light or dark theme, how it works, clear history. Developer mode (tap Version five times) holds the Mac address, the raw recording and connection details, out of a normal user's way.
+
+Rules the design follows, because breaking them breaks the counting:
+
+- **No sound and no vibration.** The speaker is the sonar, and a vibration moves the phone, which blocks counting.
+- **No touch during a set.** Start, then hands off.
+- **Readable from the floor.** Strong contrast, one accent colour, red only for NO REP and amber only for warnings.
+- **Accessible.** VoiceOver reads the count, depth and each rep; Reduce Motion is respected; NO REP is marked by more than colour.
 
 ## Status
 
@@ -87,6 +126,23 @@ So the line is what runs. The three-way model fails because a hand wave looks li
 **Depth.** In the deep set the chest went from arms locked (about 30 cm up by Addy's estimate) down to touching, and the sonar read 17.3 to 24.2 cm. So depth is in the right range and probably reads short. It is good enough to sort full from half reps, not to quote in centimetres.
 
 **Volume matters.** With the phone volume turned down the tones were 10 times weaker and a set of 10 read as noise. The receiver now refuses to count and says so when the tones are too quiet.
+
+## Presenting it
+
+A slide outline for the 3 minute video or a deck. Every number below is from this README or `RESULTS.md`; nothing planned is said as done.
+
+1. **Hook.** "There is no camera on. This phone is counting your push-ups with sound you cannot hear." Picture: `docs/app/set-light.png` next to the phone on the floor.
+2. **The problem.** Camera counters need you to film yourself. Motion counters count a shake as a rep. Both make you manage a screen while you train.
+3. **The idea.** Every phone already has a sonar: a speaker and a microphone. Three tones at 18.5, 19.1 and 19.7 kHz, the echo off your chest, and its phase gives movement. At 19 kHz one turn of phase is 0.9 cm of chest movement; a push-up is about 28 turns. Picture: the pipeline under How it works.
+4. **Live demo.** Five full reps counting up, one half rep flashing NO REP, the phone picked up and "Phone moved". Pictures: `set-light.png`, `no-rep.png`, `phone-moved.png`.
+5. **Does it work.** 38 of 40 full push-ups counted, 15 of 15 half reps refused, shaking the phone blocked, a loud room made no difference. Picture: the At a glance table.
+6. **Where the AI is, said plainly.** The tracking is physics. We trained a model to judge each movement and tested it on sets it had never seen. One depth line, fitted on the same data, beat it: 53 against 51 of 55. So the line ships, and the line itself is learned from labelled data, not hand-picked. Picture: the two tables under Evaluation.
+7. **What still fools it.** A hand waved over the phone counts (10 of 10), and so do kneeling push-ups (9 of 10): the sonar sees a surface moving, not whose it is. Telling them apart needs the distance to that surface, which steady tones do not give; short chirps would.
+8. **The app.** Personal best and history kept on the phone, NO REP and phone-moved verdicts readable from the floor, light and dark themes. Picture: the row of screens under The phone app.
+9. **Why it matters.** No camera, so no image of you ever exists; the test recordings kept in this repo hold only the band above 17.5 kHz, so no speech. It needs only a speaker and a microphone (tested so far on one iPhone and one MacBook). Uses: training at home, fitness tests, challenges between friends, places where cameras are not welcome.
+10. **Next.** Move the tracker onto the phone so it works alone (today a laptop on the same hotspot does the processing); chirps for distance, to tell a chest from a hand; more movements such as squats.
+
+Honest limits to say out loud: one person, one phone, one afternoon; depth is good enough to sort full from half reps, not to quote in centimetres; with the phone volume turned down it fails, so it now refuses to count and says why.
 
 ## Prior work
 
