@@ -1,6 +1,8 @@
 # Sonar Reps
 
-Your phone already has a sonar. Sonar Reps plays near-ultrasonic tones (18.5 to 19.7 kHz) from the iPhone speaker and listens for the echo off your chest. The phase of that echo follows your chest as it moves, so the phone counts push-ups and reads their depth with no camera, no wearable and no special hardware. Built at the QMUL AI Hackathon (Invisible AI), October 2026.
+Your phone already has a sonar. Sonar Reps plays near-ultrasonic tones (18.5 to 19.7 kHz) from the iPhone speaker and listens for the echo off your chest. The phase of that echo follows your chest as it moves, so the phone counts push-ups and reads their depth with no camera, no wearable and no special hardware. Built in one day at the QMUL AI x CS Hackathon (theme: Invisible AI), October 2026.
+
+**🥈 2nd place out of about 25 teams.** [Certificate](presentation/certificate.png)
 
 ## Why sonar
 
@@ -105,3 +107,9 @@ Reuses ideas, not code, from my earlier PressPass project (camera push-up counte
 ## Video demonstration 
 
 https://www.youtube.com/watch?v=PdGd_M7TYp4&t=13s
+
+## Team
+
+Ximo Gomez, George Guest, Padraig Middleton and Aditya Mitter, at the QMUL AI x CS Hackathon run by the Queen Mary Computer Science Society and QMUL AI Society.
+
+![Certificate of Achievement, 2nd place](presentation/certificate.png)
